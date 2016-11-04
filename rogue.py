@@ -78,6 +78,60 @@ class trap:
 		self.tr_type = tr_type
 		self.tr_flags = tr_flags
 
+class str_t:
+	def __init__(self,st_str,st_add):
+		self.st_str = st_str
+		self.st_add = st_add
+
+class magic_item:
+	def __init__(self, mi_name, mi_prob, mi_worth):
+		self.mi_name = mi_name
+		self.mi_prob = mi_prob
+		self.mi_worth = mi_worth
+
+class stats:
+	def __init__(self, s_str, s_exp, s_lvl, s_arm, s_hpt, s_dmg):
+		self.s_str = str_t(s_str.st_str, s_str.st_add)
+		self.s_exp = s_exp
+		self.s_lvl = s_lvl
+		self.s_arm = s_arm
+		self.s_hpt = s_hpt
+		self.s_dmg = s_dmg
+
+class thing:
+	def __init__(self,t_pos,t_turn,t_type,t_disguise,t_oldch,t_dest,t_flags,t_stats,t_pack):
+		self.t_pos = coord(t_pos.x,t_pos.y)
+		self.t_turn = t_turn
+		self.t_type = t_type
+		self.t_disguise = t_disguise
+		self.t_oldch = t_oldch
+		self.t_dest = coord(t_dest.x, t_dest.y)
+		self.t_flags = t_flags
+		self.t_stats = stats(t_stats.s_str, t_stats.s_exp, t_stats.s_lvl, t_stats.s_arm, t_stats.s_hpt, t_stats.s_dmg)
+		self.t_pack = t_pack
+
+class monster:
+	def __init__(self, m_name, m_carry, m_flags, m_stats):
+		self.m_name = m_name
+		self.m_carry = m_carry
+		self.m_flags = m_flags
+		self.m_stats = stats(m_stats.s_str, m_stats.s_exp, m_stats.s_lvl, m_stats.s_arm, m_stats.s_hpt, m_stats.s_dmg)
+
+class object:
+	def __init__(self, o_type, o_pos, o_launch, o_damage,o_hurldmg, o_count, o_which, o_hplus, o_dplus, o_ac, o_flags, o_group):
+		self.o_type = o_type
+		self.o_pos = coord(o_pos.x, o_pos.y)
+		self.o_launch = o_launch
+		self.o_damage = o_damage
+		self.o_hurldmg = o_hurldmg
+		self.o_count = o_count
+		self.o_which = o_which
+		self.o_hplus = o_hplus
+		self.o_dplus = o_dplus
+		self.o_ac = o_ac
+		self.o_flags = o_flags
+		self.o_group = o_group
+
 # functions
 
 def rnd(range):
@@ -345,7 +399,7 @@ def do_passages():
 
 
 def new_level():
-	global level, max_level, no_food
+	global level, max_level, no_food, player
 	if level > max_level:
 		max_level = level
 	do_rooms()
@@ -386,23 +440,76 @@ def new_level():
 	# Add light
 	rm = rnd_room()
 	playerpos = rnd_pos(rooms[rm])
+	oldch = chr(stdscr.inch(playerpos.y, playerpos.x) & 0x00FF)
+	player.t_oldch = oldch
 	stdscr.addch(playerpos.y, playerpos.x, tiles['PLAYER'])
+	player.t_pos = playerpos
 
 def init():
-	global MAXROOMS, rooms, level, no_food, traps
+	global MAXROOMS, rooms, level, no_food, traps, player
 	empty=coord(0,0)
+	empty_str_t = str_t(0,0)
+	emptystats=stats(empty_str_t,0,0,0,0,"")
+	pack = []
 	rooms = [room(empty,empty,empty,0,0,0,[empty,empty,empty,empty]) for i in range(MAXROOMS)]
 	traps = [trap(empty,0,0) for i in range(MAXTRAPS)]
+	player = thing(empty,0,0,0,'.',empty,0,emptystats,pack)
 	level = 1
 	random.seed()
 	no_food = 0
 	new_level()
 
+def status():
+	level = 1
+	purse = 0
+	hp = 12
+	maxhp = 12
+	strength = 16
+	status = "Level: " + str(level) + " Gold: " + str(purse) + " Hp: "
+	status +=  str(hp) + "(" + str(maxhp) + ") Str: " + str(strength)
+	stdscr.addstr(LINES - 1, 0, status)
+
+def do_move(dy,dx):
+	global player
+	nh = coord(player.t_pos.x + dx, player.t_pos.y + dy)
+	if nh.x < 0 or nh.x > COLS-1 or nh.y < 0 or nh.y > LINES-1:
+		return
+	ch = chr(stdscr.inch(nh.y, nh.x) & 0x00FF)
+	if ch == ' ' or ch == '|' or ch == '-':
+		return
+	stdscr.addch(player.t_pos.y, player.t_pos.x, player.t_oldch)
+	player.t_oldch = chr(stdscr.inch(nh.y, nh.x) & 0x00FF)
+	stdscr.addch(nh.y, nh.x, tiles['PLAYER'])
+	player.t_pos = nh
+
+
+def command():
+	status()
+	ch = stdscr.getch()
+	if ch == ord('h'):
+		do_move(0,-1)
+	if ch == ord('j'):
+		do_move(1,0)
+	if ch == ord('k'):
+		do_move(-1,0)
+	if ch == ord('l'):
+		do_move(0,1)
+	if ch == ord('y'):
+		do_move(-1,-1)
+	if ch == ord('u'):
+		do_move(-1,1)
+	if ch == ord('b'):
+		do_move(1,-1)
+	if ch == ord('n'):
+		do_move(1,1)
+	if ch == ord('q'):
+		sys.exit()
 
 def main(stdscr):
 	# start
 	init()
-	stdscr.getch()
+	while True:
+		command()
 
 
 greeting = "Hello, " + os.environ['USER'] + ", just a moment while I dig the dungeon...\n"
