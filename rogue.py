@@ -118,7 +118,7 @@ class monster:
 		self.m_stats = stats(m_stats.s_str, m_stats.s_exp, m_stats.s_lvl, m_stats.s_arm, m_stats.s_hpt, m_stats.s_dmg)
 
 class object:
-	def __init__(self, o_type, o_pos, o_launch, o_damage,o_hurldmg, o_count, o_which, o_hplus, o_dplus, o_ac, o_flags, o_group):
+	def __init__(self, o_type, o_pos, o_launch, o_damage,o_hurldmg, o_count, o_which, o_hplus, o_dplus, o_ac, o_flags, o_group, o_equip):
 		self.o_type = o_type
 		self.o_pos = coord(o_pos.x, o_pos.y)
 		self.o_launch = o_launch
@@ -162,7 +162,6 @@ def rnd_pos(room):
 	newcoord.x = room.r_pos.x + rnd(room.r_max.x - 2) + 1
 	newcoord.y = room.r_pos.y + rnd(room.r_max.y - 2) + 1
 	return newcoord
-
 
 def draw_room(room):
 	stdscr.move(room.r_pos.y, room.r_pos.x+1)
@@ -399,6 +398,7 @@ def do_passages():
 
 
 def new_level():
+	stdscr.erase()
 	global level, max_level, no_food, player
 	if level > max_level:
 		max_level = level
@@ -446,7 +446,7 @@ def new_level():
 	player.t_pos = playerpos
 
 def init():
-	global MAXROOMS, rooms, level, no_food, traps, player
+	global MAXROOMS, rooms, level, no_food, traps, player, max_hp, max_stats
 	empty=coord(0,0)
 	empty_str_t = str_t(0,0)
 	emptystats=stats(empty_str_t,0,0,0,0,"")
@@ -454,13 +454,27 @@ def init():
 	rooms = [room(empty,empty,empty,0,0,0,[empty,empty,empty,empty]) for i in range(MAXROOMS)]
 	traps = [trap(empty,0,0) for i in range(MAXTRAPS)]
 	player = thing(empty,0,0,0,'.',empty,0,emptystats,pack)
+	player.t_stats.s_lvl = 1
+	player.t_stats.s_exp = 0L
+	max_hp = player.t_stats.s_hpt = 12
+	if rnd(100) == 7:
+		player.t_stats.s_str.st_str = 16
+		player.t_stats.s_str.st_add = 0
+	else:
+		player.t_stats.s_str.st_str = 16
+		player.t_stats.s-str.st_add = 0
+	player.t_stats.s_dmg = "1d4"
+	player.t_stats.s_arm = 10
+	max_stats = player.t_stats
+	item = object(0,empty,0,"","",0,0,0,0,0,0,0)
+
 	level = 1
 	random.seed()
 	no_food = 0
 	new_level()
 
 def status():
-	level = 1
+	global level
 	purse = 0
 	hp = 12
 	maxhp = 12
@@ -484,6 +498,7 @@ def do_move(dy,dx):
 
 
 def command():
+	global player, level
 	status()
 	ch = stdscr.getch()
 	if ch == ord('h'):
@@ -504,6 +519,10 @@ def command():
 		do_move(1,1)
 	if ch == ord('q'):
 		sys.exit()
+	if ch == ord('>'):
+		if player.t_oldch == tiles['STAIRS']:
+			level += 1
+			new_level()
 
 def main(stdscr):
 	# start
