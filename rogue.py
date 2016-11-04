@@ -10,6 +10,11 @@ import curses
 COLS = 80
 LINES = 23
 MAXROOMS = 9
+MAXTHINGS = 9
+MAXOBJ = 9
+MAXPACK = 23
+MAXTRAPS = 10
+NUMTHINGS = 7
 
 
 flags = {'ISDARK':0000001,'ISCURSED':0000001,'ISBLIND':0000001,
@@ -31,7 +36,17 @@ level = 1
 seed = random.randint(0,10000)
 
 # GOLDCALC = (random.randint(50 + 10 * level) + 2)
-
+# winat(y, x) (mvwinch(mw,y,x)==' '?mvwinch(stdscr,y,x):winch(mw))
+# RN (((seed = seed*11109+13849) & 0x7fff) >> 1)
+# cmov(xy) move((xy).y, (xy).x)
+# inroom(rp, cp) (&& (cp)->y <= (rp)->r_pos.y + ((rp)->r_max.y - 1)
+#	&& (rp)->r_pos.y <= (cp)->y)
+# unc(cp) (cp).y, (cp).x
+# DISTANCE(y1, x1, y2, x2) ((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1))
+# ce(a, b) ((a).x == (b).x && (a).y == (b).y)
+# ISRING(h,r) (cur_ring[h] != NULL && cur_ring[h]->o_which == r)
+# ISWEARING(r) (ISRING(LEFT, r) || ISRING(RIGHT, r))
+# ISMULT(type) (type == POTION || type == SCROLL || type == FOOD)
 
 
 # classes
@@ -56,6 +71,12 @@ class rdes:
 		self.conn = conn
 		self.isconn = isconn
 		self.ingraph = ingraph
+
+class trap:
+	def __init__(self, tr_pos, tr_type, tr_flags):
+		self.tr_pos = coord(tr_pos.x, tr_pos.y)
+		self.tr_type = tr_type
+		self.tr_flags = tr_flags
 
 # functions
 
@@ -324,18 +345,57 @@ def do_passages():
 
 
 def new_level():
-	global level, max_level
+	global level, max_level, no_food
 	if level > max_level:
 		max_level = level
 	do_rooms()
 	do_passages()
+	no_food += 1
+	# Put_things()
+	# Add stairs
+	rm = rnd_room()
+	stairs = rnd_pos(rooms[rm])
+	stdscr.addch(stairs.y, stairs.x, tiles['STAIRS'])
+	# Add traps
+	if (rnd(10) < level):
+		ntraps = rnd(level/4) + 1
+		if (ntraps > MAXTRAPS):
+			ntraps = MAXTRAPS
+		i = ntraps
+		while i != 0:
+			i -= 1
+			rm = rnd_room()
+			trappos = rnd_pos(rooms[rm])
+			x = rnd(6)
+			if x == 0:
+				ch = tiles['TRAPDOOR']
+			elif x == 1:
+				ch = tiles['BEARTRAP']
+			elif x == 2:
+				ch = tiles['SLEEPTRAP']
+			elif x == 3:
+				ch = tiles['ARROWTRAP']
+			elif x == 4:
+				ch = tiles['TELTRAP']
+			else:
+				ch = tiles['DARTTRAP']
+			stdscr.addch(trappos.y, trappos.x, tiles['TRAP'])
+			traps[i].tr_type = ch
+			traps[i].tr_flags = 0
+			traps[i].tr_pos = trappos
+	# Add light
+	rm = rnd_room()
+	playerpos = rnd_pos(rooms[rm])
+	stdscr.addch(playerpos.y, playerpos.x, tiles['PLAYER'])
 
 def init():
-	global MAXROOMS, rooms, level
+	global MAXROOMS, rooms, level, no_food, traps
 	empty=coord(0,0)
 	rooms = [room(empty,empty,empty,0,0,0,[empty,empty,empty,empty]) for i in range(MAXROOMS)]
+	traps = [trap(empty,0,0) for i in range(MAXTRAPS)]
 	level = 1
 	random.seed()
+	no_food = 0
 	new_level()
 
 
