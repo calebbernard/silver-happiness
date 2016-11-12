@@ -118,7 +118,7 @@ class monster:
 		self.m_stats = stats(m_stats.s_str, m_stats.s_exp, m_stats.s_lvl, m_stats.s_arm, m_stats.s_hpt, m_stats.s_dmg)
 
 class object:
-	def __init__(self, o_type, o_pos, o_launch, o_damage,o_hurldmg, o_count, o_which, o_hplus, o_dplus, o_ac, o_flags, o_group, o_equip):
+	def __init__(self, o_type, o_pos, o_launch, o_damage,o_hurldmg, o_count, o_which, o_hplus, o_dplus, o_ac, o_flags, o_group):
 		self.o_type = o_type
 		self.o_pos = coord(o_pos.x, o_pos.y)
 		self.o_launch = o_launch
@@ -408,7 +408,9 @@ def new_level():
 	# Put_things()
 	# Add stairs
 	rm = rnd_room()
-	stairs = rnd_pos(rooms[rm])
+	stairs = rooms[rm].r_gold
+	while stairs == rooms[rm].r_gold:
+		stairs = rnd_pos(rooms[rm])
 	stdscr.addch(stairs.y, stairs.x, tiles['STAIRS'])
 	# Add traps
 	if (rnd(10) < level):
@@ -446,7 +448,7 @@ def new_level():
 	player.t_pos = playerpos
 
 def init():
-	global MAXROOMS, rooms, level, no_food, traps, player, max_hp, max_stats
+	global MAXROOMS, rooms, level, no_food, traps, player, max_hp, max_stats, purse
 	empty=coord(0,0)
 	empty_str_t = str_t(0,0)
 	emptystats=stats(empty_str_t,0,0,0,0,"")
@@ -462,11 +464,12 @@ def init():
 		player.t_stats.s_str.st_add = 0
 	else:
 		player.t_stats.s_str.st_str = 16
-		player.t_stats.s-str.st_add = 0
+		player.t_stats.s_str.st_add = 0
 	player.t_stats.s_dmg = "1d4"
 	player.t_stats.s_arm = 10
 	max_stats = player.t_stats
 	item = object(0,empty,0,"","",0,0,0,0,0,0,0)
+	purse = 0
 
 	level = 1
 	random.seed()
@@ -474,8 +477,7 @@ def init():
 	new_level()
 
 def status():
-	global level
-	purse = 0
+	global level, purse
 	hp = 12
 	maxhp = 12
 	strength = 16
@@ -484,13 +486,15 @@ def status():
 	stdscr.addstr(LINES - 1, 0, status)
 
 def do_move(dy,dx):
-	global player
+	global player, take
 	nh = coord(player.t_pos.x + dx, player.t_pos.y + dy)
 	if nh.x < 0 or nh.x > COLS-1 or nh.y < 0 or nh.y > LINES-1:
 		return
 	ch = chr(stdscr.inch(nh.y, nh.x) & 0x00FF)
 	if ch == ' ' or ch == '|' or ch == '-':
 		return
+	if ch == tiles['GOLD']:
+		take = "money"
 	stdscr.addch(player.t_pos.y, player.t_pos.x, player.t_oldch)
 	player.t_oldch = chr(stdscr.inch(nh.y, nh.x) & 0x00FF)
 	stdscr.addch(nh.y, nh.x, tiles['PLAYER'])
@@ -498,9 +502,13 @@ def do_move(dy,dx):
 
 
 def command():
-	global player, level
+	global player, level, take, rooms, purse
+	take = ""
 	status()
 	ch = stdscr.getch()
+
+	# Move character
+
 	if ch == ord('h'):
 		do_move(0,-1)
 	if ch == ord('j'):
@@ -517,6 +525,16 @@ def command():
 		do_move(1,-1)
 	if ch == ord('n'):
 		do_move(1,1)
+
+	# Pick up stuff
+
+	if take == "money":
+		for x in rooms:
+			if x.r_gold.x == player.t_pos.x and x.r_gold.y == player.t_pos.y:
+				purse += x.r_goldval
+				x.r_gold.x = x.r_gold.y = 0
+				player.t_oldch = tiles['FLOOR']
+
 	if ch == ord('q'):
 		sys.exit()
 	if ch == ord('>'):
