@@ -224,7 +224,6 @@ def rnd(range):
 		seed = ((seed * 11109 + 13848) & 0x7ffff) >> 1
 		return abs(seed) % range
 
-
 def vert(cnt):
 	y, x = stdscr.getyx()
 	x -= 1
@@ -411,7 +410,6 @@ def conn(r1, r2):
 	#if curr.x != epos.x or curr.y != epos.y:
 		#print "error 1"
 
-
 def do_passages():
 	newrdes = [
 		rdes([ 0, 1, 0, 1, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ], 0),
@@ -483,7 +481,6 @@ def pick_one(magic_list):
 		if i < x[2]:
 			return x[0]
 	return magic_list[0][0]
-
 
 def new_thing():
 	global group, no_food
@@ -570,10 +567,9 @@ def new_thing():
 			item.o_charges = rnd(10) + 10
 	return item
 
-
 def new_level():
 	stdscr.erase()
-	global level, max_level, no_food, player, items, lvl_obj
+	global level, max_level, no_food, player, items, lvl_obj, msg_list
 	if level > max_level:
 		max_level = level
 	do_rooms()
@@ -642,8 +638,13 @@ def new_level():
 	stdscr.addch(playerpos.y, playerpos.x, tiles['PLAYER'])
 	player.t_pos = playerpos
 
+	if level > 1:
+		msg_list.append("You delve downwards...")
+	else:
+		msg_list.append("Welcome to the dungeon!")
+
 def init():
-	global MAXROOMS, group, rooms, level, no_food, traps, player, max_hp, max_stats, purse, pack, lvl_obj
+	global MAXROOMS, group, msg_list, rooms, level, no_food, traps, player, max_hp, max_stats, purse, pack, lvl_obj
 	empty=coord(0,0)
 	empty_str_t = str_t(0,0)
 	emptystats=stats(empty_str_t,0,0,0,0,"")
@@ -666,6 +667,7 @@ def init():
 	item = object(0,empty,0,"","",0,0,0,0,0,0,0)
 	purse = 0
 	lvl_obj = []
+	msg_list = []
 	group = 0
 	level = 1
 	random.seed()
@@ -695,9 +697,23 @@ def do_move(dy,dx):
 	stdscr.addch(nh.y, nh.x, tiles['PLAYER'])
 	player.t_pos = nh
 
-
 def command():
-	global player, level, take, rooms, purse
+	global player, level, take, rooms, purse, msg_list
+	# First deal with messages
+	stdscr.move(0,0)
+	stdscr.clrtoeol()
+	while len(msg_list) > 0:
+		stdscr.move(0,0)
+		stdscr.clrtoeol()
+		msg = msg_list.pop()
+		stdscr.addstr(0,0,msg)
+		if len(msg_list) > 0:
+			stdscr.addstr("--More--")
+			ch = stdscr.getch()
+			while ch != ord(' '):
+				ch = stdscr.getch()
+
+
 	take = ""
 	status()
 	ch = stdscr.getch()
